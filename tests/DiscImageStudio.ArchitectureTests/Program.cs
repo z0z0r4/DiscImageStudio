@@ -183,6 +183,7 @@ CdParallelAudioTests.Run();
 CdDataImageTests.Run();
 CdParallelDataTests.Run();
 CdDataBurnTests.Run();
+DvdRewritableOverwriteTests.Run();
 CdDataDaoWorkflowTests.Run();
 CdMode1SectorTests.Run();
 CdDataSubchannelPatchTests.Run();
