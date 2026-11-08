@@ -1,0 +1,46 @@
+name: preview-release
+
+# Publishes a downloadable pre-release from a feature branch.
+# Trigger: push a tag like v1.5.0-beta.1 that points at the branch commit.
+# The tag base must equal VersionPrefix in Directory.Build.props.
+on:
+  push:
+    tags: ['v*-beta.*']
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    uses: ./.github/workflows/build.yml
+    with:
+      ref: ${{ github.sha }}
+      release_tag: ${{ github.ref_name }}
+
+  publish:
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      TAG: ${{ github.ref_name }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: '{windows,cli}-${{ github.ref_name }}-*'
+          path: dl
+
+      - name: Collect, checksum and publish pre-release
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir release
+          find dl -type f \( -name '*.exe' -o -name '*.tar.gz' \) -exec cp {} release/ \;
+          (cd release && sha256sum * > SHA256SUMS.txt && cat SHA256SUMS.txt)
+          [ "$(ls release | wc -l)" -eq 7 ] || { echo "expected 6 packages + checksums"; ls release; exit 1; }
+          gh release create "$TAG" release/* --prerelease --verify-tag \
+            --title "Disc Image Studio $TAG (feature/dvd-rw-overwrite preview)" \
+            --notes "Preview build of branch \`feature/dvd-rw-overwrite\` at commit ${GITHUB_SHA}. Unsigned and not for production use. Verify downloads against SHA256SUMS.txt."
